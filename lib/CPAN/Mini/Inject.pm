@@ -7,7 +7,6 @@ use Carp;
 use LWP::Simple;
 use File::Copy;
 use File::Basename;
-use File::Path;
 use CPAN::Checksums qw(updatedir);
 use Compress::Zlib;
 use CPAN::Mini;
@@ -18,11 +17,11 @@ CPAN::Mini::Inject - Inject modules into a CPAN::Mini mirror.
 
 =head1 Version
 
-Version 0.07
+Version 0.08
 
 =cut
 
-our $VERSION = '0.08';
+our $VERSION = '0.10';
 our @ISA=qw( CPAN::Mini );
 
 =head1 Synopsis
@@ -222,7 +221,6 @@ sub update_mirror {
 
   $ENV{FTP_PASSIVE}=1 if($self->_cfg('passive'));
 
-
   $options{local}||=$self->_cfg('local');
   $options{trace}||=0;
   $options{skip_perl}||=$self->_cfg('perl')||1;
@@ -230,7 +228,7 @@ sub update_mirror {
   $self->testremote($options{trace}) unless($self->{site});
   $options{remote}||=$self->{site};
 
-  $options{dirmode}||=oct($self->_cfg('dirmode')||sprintf('0%o',0777 &~ umask()));
+  $options{dirmode}||=oct($self->_cfg('dirmode')||sprintf('%04o',0777 & umask()));
 
   ref($self)->SUPER::update_mirror( %options );
 }
@@ -287,10 +285,14 @@ sub add {
   $self->readlist unless(exists($self->{modulelist}));
 
   $options{authorid}=uc($options{authorid});
-  $self->{authdir}=_authordir($options{authorid},$self->_cfg('repository'));
+  $self->{authdir}=$self->_authordir($options{authorid},$self->_cfg('repository'));
 
-  copy($options{file},$self->_cfg('repository').'/authors/id/'.$self->{authdir}) 
+  my $target=$self->_cfg('repository').'/authors/id/'.$self->{authdir}.'/'.basename($options{file});
+
+  copy($options{file},dirname($target))
     or croak "Copy failed: $!";
+
+  $self->_updperms($target);
 
   push(@{$self->{modulelist}},
     _fmtmodule($options{module},
@@ -327,14 +329,18 @@ sub inject {
 
     $updatedir{dirname($file)}=1;
 
-    mkpath( [ dirname($target) ] ); 
+    _mkpath( [ dirname($target) ],oct($self->_cfg('dirmode')) ); 
     copy($source,dirname($target)) 
       or croak "Copy $source to ".dirname($target)." failed: $!";
+
+    $self->_updperms($target);
     print "$target ... injected\n" if($verbose);
   }
 
   foreach my $dir (keys(%updatedir)) {
-    updatedir($self->_cfg('local')."/authors/id/$dir");
+    my $authdir=$self->_cfg('local')."/authors/id/$dir";
+    updatedir($authdir);
+    $self->_updperms("$authdir/CHECKSUMS");
   }
 
   $self->updpackages;
@@ -383,6 +389,7 @@ sub updpackages {
   $gzread->gzclose;
   $gzwrite->gzclose;
   copy($newpackages,$cpanpackages);
+  $self->_updperms($cpanpackages);
 
 }
 
@@ -430,7 +437,15 @@ sub writelist {
   }
   close(MODLIST);
 
+  $self->_updperms($self->_cfg('repository').'/modulelist');
+
   return $self;
+}
+
+sub _updperms {
+  my ($self,$file)=@_;
+
+  chmod(oct($self->_cfg('dirmode')) & 06666,$file) if($self->_cfg('dirmode'));
 }
 
 sub _optionchk {
@@ -453,17 +468,35 @@ sub _findcfg {
 }
 
 sub _authordir {
-  my $author=shift;
-  my $dir=shift;
+  my ($self,$author,$dir)=@_;
 
   foreach my $subdir ('authors','id',substr($author,0,1),substr($author,0,2),$author) {
     $dir.="/$subdir";
     unless(-e $dir) {
-      mkdir $dir or croak "mkdir $subdir failed: $!";
+      mkdir $dir
+        or croak "mkdir $subdir failed: $!";
+      chmod(oct($self->_cfg('dirmode')),$dir) if($self->_cfg('dirmode'));
     }
   }
 
   return substr($author,0,1).'/'.substr($author,0,2).'/'.$author;
+}
+
+sub _mkpath {
+  my $paths=shift;
+  my $mode=shift;
+
+  foreach my $path (@$paths) {
+    my $partpath;
+    foreach my $subdir (split("/",$path)) {
+      $partpath.=$subdir;
+      if(length($subdir) && not -e $partpath) {
+        mkdir $partpath;
+        chmod($mode,$partpath) if($mode);
+      }
+      $partpath.='/';
+    }
+  }
 }
 
 sub _fmtmodule {
