@@ -1,6 +1,5 @@
 package CPAN::Mini::Inject;
 
-use warnings;
 use strict;
 
 use Env;
@@ -19,11 +18,11 @@ CPAN::Mini::Inject - Inject modules into a CPAN::Mini mirror.
 
 =head1 Version
 
-Version 0.02
+Version 0.04
 
 =cut
 
-our $VERSION = '0.02';
+our $VERSION = '0.04';
 our @ISA=qw( CPAN::Mini );
 
 =head1 Synopsis
@@ -171,10 +170,13 @@ respond successfully is set as the instance variable site.
 
  print "$mcpi->{site}\n"; # ftp://ftp.cpan.org/pub/CPAN
 
+C<testremote> accepts an optional parameter to enable verbose mode.
+
 =cut
 
 sub testremote {
   my $self=shift;
+  my $verbose=shift;
 
   $self->{site}=undef if($self->{site});
 
@@ -183,8 +185,11 @@ sub testremote {
   foreach my $site (split(/\s+/,$self->_cfg('remote'))) {
     $site.='/' unless($site=~m/\/$/);
 
+    print "Testing site: $site\n" if($verbose);
+
     if(get($site.'authors/01mailrc.txt.gz')) {
       $self->{site}=$site;
+      print "\n$site selected.\n" if($verbose);
       last;
     }
   }
@@ -209,12 +214,13 @@ sub update_mirror {
 
   $ENV{FTP_PASSIVE}=1 if($self->_cfg('passive'));
 
-  $self->testremote unless($self->{site});
 
-  $options{remote}||=$self->{site};
   $options{local}||=$self->_cfg('local');
   $options{trace}||=0;
   $options{skip_perl}||=$self->_cfg('perl')||1;
+
+  $self->testremote($options{trace}) unless($self->{site});
+  $options{remote}||=$self->{site};
 
   ref($self)->SUPER::update_mirror( %options );
 }
@@ -292,10 +298,14 @@ Insert modules from the repository into the local CPAN::Mini mirror. inject
 copies each module into the appropriate directory in the CPAN::Mini mirror
 and updates the CHECKSUMS file.
 
+Passing a value to C<inject> enables verbose mode, which lists each module
+as it's injected.
+
 =cut
 
 sub inject {
   my $self=shift;
+  my $verbose=shift;
 
   $self->readlist unless(exists($self->{modulelist}));
 
@@ -310,6 +320,7 @@ sub inject {
     mkpath( [ dirname($target) ] ); 
     copy($source,dirname($target)) 
       or croak "Copy $source to ".dirname($target)." failed: $!";
+    print "$target ... injected\n" if($verbose);
   }
 
   foreach my $dir (keys(%updatedir)) {
@@ -321,7 +332,7 @@ sub inject {
   return $self;
 }
 
-=head2 updpackages 
+=head2 updpackages()
 
 Update the CPAN::Mini mirror's modules/02packages.details.txt.gz with the
 injected module information.
@@ -456,6 +467,10 @@ sub _fmtmodule {
 sub _cfg { 
   $_[0]->{config}{$_[1]} 
 }
+
+=head1 See Also
+
+L<CPAN::Mini>
 
 =head1 Author
 

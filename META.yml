@@ -1,12 +1,13 @@
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         CPAN-Mini-Inject
-version:      0.02
+version:      0.04
 version_from: lib/CPAN/Mini/Inject.pm
 installdirs:  site
 requires:
+    CPAN::Mini:                    0
+    Test::More:                    0
     CPAN::Checksums:               0
     LWP::Simple:                   0
-    Test::More:                    0
 
 distribution_type: module
 generated_by: ExtUtils::MakeMaker version 6.12
