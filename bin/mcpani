@@ -6,11 +6,11 @@ use Getopt::Long;
 use CPAN::Mini::Inject;
 use Env;
 
-our $VERSION = '0.06';
+our $VERSION = '0.08';
 our %options=();
 
 sub print_version {
-  printf("SCRIPTNAME v%s, using CPAN::Mini::Inject v%s and Perl v%vd\n", $VERSION, $CPAN::Mini::Inject::VERSION, $^V);
+  printf("mcpani v%s, using CPAN::Mini::Inject v%s and Perl v%vd\n", $VERSION, $CPAN::Mini::Inject::VERSION, $^V);
 }
 
 sub chkactions {
@@ -28,7 +28,7 @@ sub setsub {
 sub add {
   my $mcpi=shift;
 
-  if($options{file}=~/^(.*)-(\d+\.\d+)\.tar\.gz/) {
+  if($options{file}=~/^(.*)-([0-9._]+)\.tar\.gz/) {
     $options{module}||=$1;
     $options{version}||=$2;
 
@@ -224,6 +224,7 @@ F<mcpani> uses a simple configuration file in the following format:
  remote: ftp://ftp.cpan.org/pub/CPAN ftp://ftp.kernel.org/pub/CPAN
  repository: /work/mymodules
  passive: yes
+ dirmode: 0755
 
 Description of options:
 
@@ -245,6 +246,11 @@ Location to store modules to add to the local CPAN::Mini mirror.
 =item * passive
 
 Enable passive FTP.
+
+=item * dirmode
+
+Set the permissions of created directories to the specified mode 
+(octal value). The default value is based on the umask (if supported).
 
 =back
 
