@@ -17,7 +17,7 @@ my $module="CPAN::Mini::Inject                 0.01  S/SS/SSORICHE/CPAN-Mini-Inj
 ok(grep(/$module/,@{$mcpi->{modulelist}}),'Module added to list');
 
 SKIP: {
-  skip "Not a UNIX system", 2 if($^O =~ /^Win/);
+  skip "Not a UNIX system", 2 if($^O =~ /^MSWin/);
   is((stat('t/local/MYCPAN/authors/id/S/SS/SSORICHE'))[2] & 07777,0775,'Added author directory mode is 0775');
   is((stat('t/local/MYCPAN/authors/id/S/SS/SSORICHE/CPAN-Mini-Inject-0.01.tar.gz'))[2] & 07777,0664,'Added module mode is 0664');
 }
@@ -26,18 +26,16 @@ SKIP: {
 # the ->parsecfg
 
 SKIP: {
-  eval "use Test::Exception";
+  eval { use Test::Exception };
   skip "Test::Exception not installed", 2 if $@;
-  use Test::Exception;
 
   dies_ok { $mcpi->add( module => 'CPAN::Mini::Inject', authorid => 'SSORICHE', version => '0.01' ) } 'Missing add param';
   dies_ok { $mcpi->add( module => 'CPAN::Mini::Inject', authorid => 'SSORICHE', version => '0.01', file => 'blahblah' ) } 'Module file not readable';
 }
 
 SKIP: {
-  eval "use Test::Exception";
+  eval { use Test::Exception };
   skip "Test::Exception not installed", 1 if $@;
-  use Test::Exception;
 
   $mcpi->loadcfg('t/.mcpani/config_norepo')
        ->parsecfg;
@@ -46,9 +44,8 @@ SKIP: {
 }
 
 SKIP: {
-  eval "use Test::Exception";
+  eval { use Test::Exception };
   skip "Test::Exception not installed", 1 if $@;
-  use Test::Exception;
 
   $mcpi->loadcfg('t/.mcpani/config_read')
        ->parsecfg;
