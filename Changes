@@ -1,6 +1,13 @@
 Revision history for CPAN-Mini-Inject
 
-0.13    01/05/2005
+0.16    01/08/2005
+        - Decreased the size of t/read/authors/01mailrc.txt.gz reducing
+          greatly the size of the package.
+        - More problems discovered with exception testing. Moved all
+          exception tests to a single zz.exceptions.t, skip them all
+          if Test::Exception isn't installed.
+
+0.14    01/05/2005
         - Added an optional filename parameter to parsecfg. This allows
           calling parsecfg without having to previously call loadcfg
           (tests added as required).

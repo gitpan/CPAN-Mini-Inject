@@ -17,11 +17,11 @@ CPAN::Mini::Inject - Inject modules into a CPAN::Mini mirror.
 
 =head1 Version
 
-Version 0.14
+Version 0.16
 
 =cut
 
-our $VERSION = '0.14';
+our $VERSION = '0.16';
 our @ISA=qw( CPAN::Mini );
 
 =head1 Synopsis
@@ -161,6 +161,7 @@ sub parsecfg {
 
   my %required=( local => 1, remote => 1 );
 
+  delete $self->{cfgfile} if($cfgfile);
   $self->loadcfg($cfgfile) unless($self->{cfgfile});
 
   if(-r $self->{cfgfile}) {
@@ -172,7 +173,7 @@ sub parsecfg {
     }
     close(CFGFILE);
 
-    croak 'Required parameter(s): '.join(' ',keys(%required)) if(keys(%required));
+    croak 'Required parameter(s): '.join(' ',keys(%required)).' missing.' if(keys(%required));
   }
   return $self;
 }
