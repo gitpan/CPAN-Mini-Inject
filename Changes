@@ -1,5 +1,18 @@
 Revision history for CPAN-Mini-Inject
 
+0.13    01/05/2005
+        - Added an optional filename parameter to parsecfg. This allows
+          calling parsecfg without having to previously call loadcfg
+          (tests added as required).
+        - Updated Synopsis to not using method chaining, but documented
+          that it is possible.
+        - Updated prereq of CPAN::Mini to version 0.32
+        - Fixed a warning message if dirmode isn't configured during the
+          inject process.
+        - Fixed update_mirror to call CPAN::Mini->update_mirror directly
+          fixing a problem with CPAN::Mini::Inject and the latest version
+          of CPAN::Mini (0.32).
+
 0.12    01/04/2005
         - Tests failed for inject and add on Windows systems. These tests
           have now been skipped.

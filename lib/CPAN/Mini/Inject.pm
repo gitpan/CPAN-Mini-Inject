@@ -17,11 +17,11 @@ CPAN::Mini::Inject - Inject modules into a CPAN::Mini mirror.
 
 =head1 Version
 
-Version 0.12
+Version 0.14
 
 =cut
 
-our $VERSION = '0.12';
+our $VERSION = '0.14';
 our @ISA=qw( CPAN::Mini );
 
 =head1 Synopsis
@@ -32,17 +32,16 @@ probably want to look at the mcpani command, instead.
     use CPAN::Mini::Inject;
 
     $mcpi=CPAN::Mini::Inject->new;
+    $mcpi->parsecfg('t/.mcpani/config');
 
-    $mcpi->loadcfg('t/.mcpani/config')
-         ->parsecfg
-         ->readlist
-         ->add( module => 'CPAN::Mini::Inject', 
+    $mcpi->add( module => 'CPAN::Mini::Inject', 
                 authorid => 'SSORICHE', 
                 version => ' 0.01', 
                 file => 'mymodules/CPAN-Mini-Inject-0.01.tar.gz' )
-         ->writelist
-         ->update_mirror
-         ->inject;
+
+    $mcpi->writelist;
+    $mcpi->update_mirror;
+    $mcpi->inject;
 
 =head1 Description
 
@@ -52,7 +51,13 @@ of private modules in a minimal CPAN mirror.
 
 =head1 Methods
 
-Each method in CPAN::Mini::Inject returns the object.
+Each method in CPAN::Mini::Inject returns a CPAN::Mini::Inject object which
+allows method chaining. For example:
+
+    my $mcpi=CPAN::Mini::Inject->new;
+    $mcpi->pasrsecfg
+         ->update_mirror
+         ->inject;
 
 =head2 new()
 
@@ -150,10 +155,13 @@ If either local or remote are not defined parsecfg croaks.
 
 sub parsecfg {
   my $self=shift;
+  my $cfgfile=shift;
   
   delete $self->{config} if(defined($self->{config}));
 
   my %required=( local => 1, remote => 1 );
+
+  $self->loadcfg($cfgfile) unless($self->{cfgfile});
 
   if(-r $self->{cfgfile}) {
     open(CFGFILE,$self->{cfgfile});
@@ -228,9 +236,9 @@ sub update_mirror {
   $self->testremote($options{trace}) unless($self->{site});
   $options{remote}||=$self->{site};
 
-  $options{dirmode}||=oct($self->_cfg('dirmode')||sprintf('%04o',0777 & umask()));
+  $options{dirmode}||=oct($self->_cfg('dirmode')||sprintf('0%o',0777 &~ umask()));
 
-  ref($self)->SUPER::update_mirror( %options );
+  CPAN::Mini->update_mirror( %options );
 }
 
 =head2 add()
@@ -319,6 +327,7 @@ sub inject {
   my $self=shift;
   my $verbose=shift;
 
+  my $dirmode=oct($self->_cfg('dirmode')) if($self->_cfg('dirmode'));
   $self->readlist unless(exists($self->{modulelist}));
 
   my %updatedir;
@@ -329,7 +338,7 @@ sub inject {
 
     $updatedir{dirname($file)}=1;
 
-    _mkpath( [ dirname($target) ],oct($self->_cfg('dirmode')) ); 
+    _mkpath( [ dirname($target) ],$dirmode ); 
     copy($source,dirname($target)) 
       or croak "Copy $source to ".dirname($target)." failed: $!";
 
