@@ -18,11 +18,11 @@ CPAN::Mini::Inject - Inject modules into a CPAN::Mini mirror.
 
 =head1 Version
 
-Version 0.04
+Version 0.06
 
 =cut
 
-our $VERSION = '0.04';
+our $VERSION = '0.06';
 our @ISA=qw( CPAN::Mini );
 
 =head1 Synopsis
@@ -97,6 +97,7 @@ sub loadcfg {
   my $self=shift;
   my $cfgfile=shift||_findcfg();
 
+  croak 'Unable to find config file' unless($cfgfile); 
   $self->{cfgfile}=$cfgfile;
   return $self;
 }
