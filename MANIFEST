@@ -2,7 +2,6 @@ Changes
 MANIFEST
 MANIFEST.SKIP
 README
-META.yml # Will be created by "make dist"
 Makefile.PL
 TODO
 bin/mcpani
@@ -41,3 +40,4 @@ t/html/CPAN-Mini-2.1828.tar.gz
 t/html/CPAN-Mini-Inject-1.01.tar.gz
 t/lib/CPANServer.pm
 t/update_mirror.t
+META.yml                                 Module meta-data (added by MakeMaker)
