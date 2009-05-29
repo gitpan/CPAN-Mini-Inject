@@ -1,187 +1,173 @@
 package CPAN::Mini::Inject;
 
 use strict;
+use warnings;
 
-use Env;
-use Carp;
-use LWP::Simple;
-use File::Copy;
-use File::Basename;
-use CPAN::Checksums qw(updatedir);
-use Compress::Zlib;
+use CPAN::Checksums qw( updatedir );
 use CPAN::Mini;
+use CPAN::Mini::Inject::Config;
+use Carp;
+use Compress::Zlib;
+use Env;
+use File::Basename;
+use File::Copy;
+use File::Path qw( make_path );
+use File::Spec;
+use LWP::Simple;
 
 =head1 NAME
 
 CPAN::Mini::Inject - Inject modules into a CPAN::Mini mirror.
 
-=head1 Version
+=head1 VERSION
 
-Version 0.23
+Version 0.25
 
 =cut
 
-our $VERSION = '0.24';
+our $VERSION = '0.25';
 our @ISA     = qw( CPAN::Mini );
 
 =head1 Synopsis
 
-If you're not going to customize the way CPAN::Mini::Inject works, you
-probably want to look at the mcpani command, instead.
+If you're not going to customize the way CPAN::Mini::Inject works you
+probably want to look at the mcpani command instead.
 
     use CPAN::Mini::Inject;
 
     $mcpi=CPAN::Mini::Inject->new;
     $mcpi->parsecfg('t/.mcpani/config');
 
-    $mcpi->add( module => 'CPAN::Mini::Inject', 
+    $mcpi->add( module   => 'CPAN::Mini::Inject', 
                 authorid => 'SSORICHE', 
-                version => ' 0.01', 
-                file => 'mymodules/CPAN-Mini-Inject-0.01.tar.gz' )
+                version  => ' 0.01', 
+                file     => 'mymodules/CPAN-Mini-Inject-0.01.tar.gz' )
 
     $mcpi->writelist;
     $mcpi->update_mirror;
     $mcpi->inject;
 
-=head1 Description
+=head1 DESCRIPTION
 
 CPAN::Mini::Inject uses CPAN::Mini to build or update a local CPAN mirror
 then adds modules from your repository to it, allowing the inclusion
 of private modules in a minimal CPAN mirror. 
 
-=head1 Methods
+=head1 METHODS
 
 Each method in CPAN::Mini::Inject returns a CPAN::Mini::Inject object which
 allows method chaining. For example:
 
     my $mcpi=CPAN::Mini::Inject->new;
-    $mcpi->pasrsecfg
+    $mcpi->parsecfg
          ->update_mirror
          ->inject;
 
-=head2 new()
+A C<CPAN::Mini::Inject> ISA L<CPAN::Mini>. Refer to the
+L<documentation|CPAN::Mini> for that module for details of the interface
+C<CPAN::Mini::Inject> inherits from it.
+
+=head2 C<new>
 
 Create a new CPAN::Mini::Inject object.
 
 =cut
 
 sub new {
-  my $class = shift;
-  my $self  = {};
-  bless $self, $class;
-  return $self;
+  return bless
+   { config_class => 'CPAN::Mini::Inject::Config' },
+   $_[0];
 }
 
-=head2 loadcfg()
+=head2 C<< config_class( [CLASS] ) >>
 
-loadcfg accepts a CPAN::Mini::Inject config file or if not defined
-will search the following four places in order:
+Returns the name of the class handling the configuration. 
 
-=over 4
+With an argument, it sets the name of the class to handle
+the config. To use that, you'll have to call it before you
+load the configuration.
 
-=item * file pointed to by the environment variable MCPANI_CONFIG
+=cut
 
-=item * $HOME/.mcpani/config
+sub config_class {
+  my $self = shift;
 
-=item * /usr/local/etc/mcpani
+  if ( @_ ) { $self->{config_class} = shift }
 
-=item * /etc/mcpani
+  $self->{config_class};
+}
 
-=back 
+=head2 C<< config >>
+
+Returns the configuration object. This object should be from
+the class returned by C<config_class> unless you've done something
+wierd.
+
+=cut
+
+sub config {
+  my $self = shift;
+
+  if ( @_ ) { $self->{config} = shift }
+
+  $self->{config};
+}
+
+=head2 C<< loadcfg( [FILENAME] ) >>
 
 
-loadcfg sets the instance variable cfgfile to the file found or undef if
-none is found.
-
- print "$mcpi->{cfgfile}\n"; # /etc/mcpani
+This is a bridge to CPAN::Mini::Inject::Config's loadconfig. It sets the
+filename for the configuration, or uses one of the defaults.
 
 =cut
 
 sub loadcfg {
   my $self = shift;
-  my $cfgfile = shift || _findcfg();
 
-  croak 'Unable to find config file' unless ( $cfgfile );
-  $self->{cfgfile} = $cfgfile;
+  unless ( $self->{config} ) {
+    $self->{config} = $self->config_class->new;
+  }
+
+  $self->{cfgfile} = $self->{config}->load_config( @_ );
+
   return $self;
 }
 
-=head2 parsecfg()
+=head2 C<< parsecfg() >>
 
-parsecfg reads the config file stored in the instance variable cfgfile and
-creates a hash in config with each setting.
-
-  $mcpi->{config}{remote} # CPAN sites to mirror from.
-
-parsecfg expects the config file in the following format:
-
- local: /www/CPAN
- remote: ftp://ftp.cpan.org/pub/CPAN ftp://ftp.kernel.org/pub/CPAN
- repository: /work/mymodules
- passive: yes
- dirmode: 0755
-
-Description of options:
-
-=over 4
-
-=item * local 
-
-location to store local CPAN::Mini mirror (*REQUIRED*)
-
-=item * remote 
-
-CPAN site(s) to mirror from. Multiple sites can be listed space separated. 
-(*REQUIRED*)
-
-=item * repository
-
-Location to store modules to add to the local CPAN::Mini mirror.
-
-=item * passive
-
-Enable passive FTP.
-
-=item * dirmode
-
-Set the permissions of created directories to the specified mode. The default
-value is based on umask if supported.
-
-=back
-
-If either local or remote are not defined parsecfg croaks.
+This is a bridge to CPAN::Mini::Inject::Config's parseconfig.
 
 =cut
 
 sub parsecfg {
-  my $self    = shift;
-  my $cfgfile = shift;
+  my $self = shift;
 
-  delete $self->{config} if ( defined( $self->{config} ) );
-
-  my %required = ( local => 1, remote => 1 );
-
-  delete $self->{cfgfile} if ( $cfgfile );
-  $self->loadcfg( $cfgfile ) unless ( $self->{cfgfile} );
-
-  if ( -r $self->{cfgfile} ) {
-    open( CFGFILE, $self->{cfgfile} );
-    while ( <CFGFILE> ) {
-      next if ( /^\s*#/ );
-      $self->{config}{$1} = $2 if ( /([^:\s]+)\s*:\s*(.*)$/ );
-      delete $required{$1} if ( defined( $required{$1} ) );
-    }
-    close( CFGFILE );
-
-    croak 'Required parameter(s): '
-     . join( ' ', keys( %required ) )
-     . ' missing.'
-     if ( keys( %required ) );
+  unless ( $self->{config} ) {
+    $self->config( $self->config_class->new );
   }
+
+  $self->config->parse_config( @_ );
+
   return $self;
 }
 
-=head2 testremote()
+=head2 C<< site( [SITE] ) >>
+	
+Returns the CPAN site that CPAN::Mini::Inject chose from the 
+list specified in the C<remote> directive.
+
+=cut
+
+sub site {
+  no warnings;
+  my $self = shift;
+
+  if ( @_ ) { $self->{site} = shift }
+
+  $self->{site} || '';
+}
+
+=head2 C<testremote>
 
 Test each site listed in the remote parameter of the config file by performing
 a get on each site in order for authors/01mailrc.txt.gz. The first site to
@@ -197,28 +183,30 @@ sub testremote {
   my $self    = shift;
   my $verbose = shift;
 
-  $self->{site} = undef if ( $self->{site} );
+  $self->site( undef ) if $self->site;
 
-  $ENV{FTP_PASSIVE} = 1 if ( $self->_cfg( 'passive' ) );
+  $ENV{FTP_PASSIVE} = 1 if ( $self->config->get( 'passive' ) );
 
-  foreach my $site ( split( /\s+/, $self->_cfg( 'remote' ) ) ) {
+  for my $site ( split( /\s+/, $self->config->get( 'remote' ) ) ) {
+
     $site .= '/' unless ( $site =~ m/\/$/ );
 
     print "Testing site: $site\n" if ( $verbose );
 
     if ( get( $site . 'authors/01mailrc.txt.gz' ) ) {
-      $self->{site} = $site;
+      $self->site( $site );
+
       print "\n$site selected.\n" if ( $verbose );
       last;
     }
   }
 
-  croak "Unable to connect to any remote site" unless ( $self->{site} );
+  croak "Unable to connect to any remote site" unless $self->site;
 
   return $self;
 }
 
-=head2 update_mirror()
+=head2 C<update_mirror>
 
 This is a subclass of CPAN::Mini.
 
@@ -228,26 +216,26 @@ sub update_mirror {
   my $self    = shift;
   my %options = @_;
 
-  croak 'Can not write to local: ' . $self->_cfg( 'local' )
-   unless ( -w $self->_cfg( 'local' ) );
+  croak 'Can not write to local: ' . $self->config->get( 'local' )
+   unless ( -w $self->config->get( 'local' ) );
 
-  $ENV{FTP_PASSIVE} = 1 if ( $self->_cfg( 'passive' ) );
+  $ENV{FTP_PASSIVE} = 1 if $self->config->get( 'passive' );
 
-  $options{local}     ||= $self->_cfg( 'local' );
+  $options{local}     ||= $self->config->get( 'local' );
   $options{trace}     ||= 0;
-  $options{skip_perl} ||= $self->_cfg( 'perl' ) || 1;
+  $options{skip_perl} ||= $self->config->get( 'perl' ) || 1;
 
   $self->testremote( $options{trace} )
-   unless ( $self->{site} || $options{remote} );
-  $options{remote} ||= $self->{site};
+   unless ( $self->site || $options{remote} );
+  $options{remote} ||= $self->site;
 
-  $options{dirmode} ||= oct( $self->_cfg( 'dirmode' )
-     || sprintf( '0%o', 0777 & ~umask() ) );
+  $options{dirmode} ||= oct( $self->config->get( 'dirmode' )
+     || sprintf( '0%o', 0777 & ~umask ) );
 
   CPAN::Mini->update_mirror( %options );
 }
 
-=head2 add()
+=head2 C<add>
 
 Add a new module to the repository. The add method copies the module
 file into the repository with the same structure as a CPAN site. For
@@ -292,23 +280,25 @@ sub add {
   my $optionchk
    = _optionchk( \%options, qw/module authorid version file/ );
 
-  croak "Required option not specified: $optionchk" if ( $optionchk );
+  croak "Required option not specified: $optionchk" if $optionchk;
   croak "No repository configured"
-   unless ( $self->_cfg( 'repository' ) );
-  croak "Can not write to repository: " . $self->_cfg( 'repository' )
-   unless ( -w $self->_cfg( 'repository' ) );
+   unless ( $self->config->get( 'repository' ) );
+  croak "Can not write to repository: "
+   . $self->config->get( 'repository' )
+   unless ( -w $self->config->get( 'repository' ) );
+
   croak "Can not read module file: $options{file}"
-   unless ( -r $options{file} );
+   unless -r $options{file};
 
   my $modulefile = basename( $options{file} );
-  $self->readlist unless ( exists( $self->{modulelist} ) );
+  $self->readlist unless exists( $self->{modulelist} );
 
   $options{authorid} = uc( $options{authorid} );
   $self->{authdir} = $self->_authordir( $options{authorid},
-    $self->_cfg( 'repository' ) );
+    $self->config->get( 'repository' ) );
 
   my $target
-   = $self->_cfg( 'repository' )
+   = $self->config->get( 'repository' )
    . '/authors/id/'
    . $self->{authdir} . '/'
    . basename( $options{file} );
@@ -329,7 +319,7 @@ sub add {
   return $self;
 }
 
-=head2 inject()
+=head2 C<inject>
 
 Insert modules from the repository into the local CPAN::Mini mirror. inject
 copies each module into the appropriate directory in the CPAN::Mini mirror
@@ -344,28 +334,32 @@ sub inject {
   my $self    = shift;
   my $verbose = shift;
 
-  my $dirmode = oct( $self->_cfg( 'dirmode' ) )
-   if ( $self->_cfg( 'dirmode' ) );
+  my $dirmode = oct( $self->config->get( 'dirmode' ) )
+   if ( $self->config->get( 'dirmode' ) );
+
   $self->readlist unless ( exists( $self->{modulelist} ) );
 
   my %updatedir;
-  foreach my $modline ( @{ $self->{modulelist} } ) {
+  for my $modline ( @{ $self->{modulelist} } ) {
     my ( $module, $version, $file ) = split( /\s+/, $modline );
-    my $target = $self->_cfg( 'local' ) . '/authors/id/' . $file;
-    my $source = $self->_cfg( 'repository' ) . '/authors/id/' . $file;
+    my $target = $self->config->get( 'local' ) . '/authors/id/' . $file;
+    my $source
+     = $self->config->get( 'repository' ) . '/authors/id/' . $file;
 
     $updatedir{ dirname( $file ) } = 1;
 
-    _mkpath( [ dirname( $target ) ], $dirmode );
-    copy( $source, dirname( $target ) )
-     or croak "Copy $source to " . dirname( $target ) . " failed: $!";
+    my $tdir = dirname $target;
+    _make_path( $tdir, defined $dirmode ? { mode => $dirmode } : {} );
+    copy( $source, $tdir )
+     or croak "Copy $source to $tdir failed: $!";
 
     $self->_updperms( $target );
-    print "$target ... injected\n" if ( $verbose );
+    print "$target ... injected\n" if $verbose;
   }
 
-  foreach my $dir ( keys( %updatedir ) ) {
-    my $authdir = $self->_cfg( 'local' ) . "/authors/id/$dir";
+  for my $dir ( keys( %updatedir ) ) {
+    my $authdir = $self->config->get( 'local' ) . "/authors/id/$dir";
+
     updatedir( $authdir );
     $self->_updperms( "$authdir/CHECKSUMS" );
   }
@@ -376,7 +370,7 @@ sub inject {
   return $self;
 }
 
-=head2 updpackages()
+=head2 C<updpackages>
 
 Update the CPAN::Mini mirror's modules/02packages.details.txt.gz with the
 injected module information.
@@ -396,7 +390,7 @@ sub updpackages {
 
 }
 
-=head2 updauthors()
+=head2 C<updauthors>
 
 Update the CPAN::Mini mirror's authors/01mailrc.txt.gz with
 stub information should the author not actually exist on CPAN
@@ -415,7 +409,7 @@ sub updauthors {
   my @authors;
   my %authors_added;
   AUTHOR:
-  foreach my $modline ( @{ $self->{modulelist} } ) {
+  for my $modline ( @{ $self->{modulelist} } ) {
     my ( $module, $version, $file ) = split( /\s+/, $modline );
     my $author
      = ( split( "/", $file, 4 ) )[2]; # extract the author from the path
@@ -433,35 +427,37 @@ sub updauthors {
 
 }
 
-=head2 readlist()
+=head2 C<readlist>
 
 Load the repository's modulelist.
 
 =cut
+
+sub _repo_file {
+  File::Spec->catfile( shift->config->get( 'repository' ), @_ );
+}
+
+sub _modulelist { shift->_repo_file( 'modulelist' ) }
 
 sub readlist {
   my $self = shift;
 
   $self->{modulelist} = undef;
 
-  return $self
-   unless ( -e $self->_cfg( 'repository' ) . '/modulelist' );
-  croak 'Can not read module list: '
-   . $self->_cfg( 'repository' )
-   . '/modulelist'
-   unless ( -r $self->_cfg( 'repository' ) . '/modulelist' );
+  my $ml = $self->_modulelist;
+  return $self unless -e $ml;
 
-  open( MODLIST, $self->_cfg( 'repository' ) . '/modulelist' );
+  open MODLIST, '<', $ml or croak "Can not read module list: $ml ($!)";
   while ( <MODLIST> ) {
     chomp;
-    push( @{ $self->{modulelist} }, $_ );
+    push @{ $self->{modulelist} }, $_;
   }
-  close( MODLIST );
+  close MODLIST;
 
   return $self;
 }
 
-=head2 writelist()
+=head2 C<writelist>
 
 Write to the repository modulelist.
 
@@ -471,20 +467,22 @@ sub writelist {
   my $self = shift;
 
   croak 'Can not write module list: '
-   . $self->_cfg( 'repository' )
+   . $self->config->get( 'repository' )
    . "/modulelist ERROR: $!"
    unless ( -w $self->{config}{repository} . '/modulelist'
     || -w $self->{config}{repository} );
-  return $self unless ( defined( $self->{modulelist} ) );
+  return $self unless defined( $self->{modulelist} );
 
-  open( MODLIST, '>' . $self->_cfg( 'repository' ) . '/modulelist' );
+  open( MODLIST,
+    '>' . $self->config->get( 'repository' ) . '/modulelist' );
   for ( sort( @{ $self->{modulelist} } ) ) {
     chomp;
     print MODLIST "$_\n";
   }
   close( MODLIST );
 
-  $self->_updperms( $self->_cfg( 'repository' ) . '/modulelist' );
+  $self->_updperms(
+    $self->config->get( 'repository' ) . '/modulelist' );
 
   return $self;
 }
@@ -492,70 +490,63 @@ sub writelist {
 sub _updperms {
   my ( $self, $file ) = @_;
 
-  chmod( oct( $self->_cfg( 'dirmode' ) ) & 06666, $file )
-   if ( $self->_cfg( 'dirmode' ) );
+  chmod oct( $self->config->get( 'dirmode' ) ) & 06666, $file
+   if $self->config->get( 'dirmode' );
 }
 
 sub _optionchk {
   my ( $options, @list ) = @_;
   my @missing;
 
-  foreach my $option ( @list ) {
-    push( @missing, $option ) unless ( defined( $$options{$option} ) );
+  for my $option ( @list ) {
+    push @missing, $option
+     unless defined $$options{$option};
   }
 
-  return join( ' ', @missing ) if ( @missing );
+  return join ' ', @missing;
 }
 
+# TODO this stuff has moved to ::Config
 sub _findcfg {
-  return $ENV{MCPANI_CONFIG}
-   if ( defined( $ENV{MCPANI_CONFIG} ) && -r $ENV{MCPANI_CONFIG} );
-  return "$ENV{HOME}/.mcpani/config"
-   if ( defined( $ENV{HOME} ) && -r "$ENV{HOME}/.mcpani/config" );
-  return '/usr/local/etc/mcpani' if ( -r '/usr/local/etc/mcpani' );
-  return '/etc/mcpani'           if ( -r '/etc/mcpani' );
+  my @try = (
+    ( defined $ENV{MCPANI_CONFIG} ? ( [ $ENV{MCPANI_CONFIG} ] ) : () ),
+    (
+      defined $ENV{HOME} ? ( [ $ENV{HOME}, '.mcpani', 'config' ] ) : ()
+    ),
+  );
+  push @try, ['/usr/local/etc/mcpani'], ['/etc/mcpani']
+   unless $^O =~ /MSWin32/;
+  for my $try ( @try ) {
+    my $file = File::Spec->catfile( @$try );
+    return $file if -r $file;
+  }
   return undef;
+}
+
+sub _make_path {
+  my $um = umask 0;
+  make_path( @_ );
+  umask $um;
 }
 
 sub _authordir {
   my ( $self, $author, $dir ) = @_;
 
-  foreach my $subdir (
-    'authors', 'id',
-    substr( $author, 0, 1 ),
-    substr( $author, 0, 2 ), $author
-   ) {
-    $dir .= "/$subdir";
-    unless ( -e $dir ) {
-      mkdir $dir
-       or croak "mkdir $subdir failed: $!";
-      chmod( oct( $self->_cfg( 'dirmode' ) ), $dir )
-       if ( $self->_cfg( 'dirmode' ) );
-    }
-  }
+  my @author
+   = ( substr( $author, 0, 1 ), substr( $author, 0, 2 ), $author );
 
-  return
-     substr( $author, 0, 1 ) . '/'
-   . substr( $author, 0, 2 ) . '/'
-   . $author;
+  my $dm = $self->config->get( 'dirmode' );
+  my @new
+   = _make_path( File::Spec->catdir( $dir, 'authors', 'id', @author ),
+    defined $dm ? { mode => oct $dm } : {} );
+
+  return return File::Spec->catdir( @author );
 }
 
-sub _mkpath {
-  my $paths = shift;
-  my $mode  = shift;
-
-  foreach my $path ( @$paths ) {
-    my $partpath;
-    foreach my $subdir ( split( "/", $path ) ) {
-      $partpath .= $subdir;
-      if ( length( $subdir ) && not -e $partpath ) {
-        mkdir $partpath;
-        chmod( $mode, $partpath ) if ( $mode );
-      }
-      $partpath .= '/';
-    }
-  }
-}
+#sub _fmtmodule {
+#  my ( $module, $file, $version ) = @_;
+#  return sprintf "%-40s %s", "$module $version", $file;
+#}
 
 sub _fmtmodule {
   my ( $module, $file, $version ) = @_;
@@ -565,18 +556,15 @@ sub _fmtmodule {
   return "$module $version  $file";
 }
 
-sub _cfg {
-  $_[0]->{config}{ $_[1] };
-}
+sub _cfg { $_[0]->{config}{ $_[1] } }
 
 sub _readpkgs {
   my $self = shift;
 
-  my $gzread
-   = gzopen(
-    $self->_cfg( 'local' ) . '/modules/02packages.details.txt.gz',
-    'rb' )
-   or croak "Cannot open local 02packages.details.txt.gz: $gzerrno";
+  my $gzread = gzopen(
+    $self->config->get( 'local' )
+     . '/modules/02packages.details.txt.gz', 'rb'
+  ) or croak "Cannot open local 02packages.details.txt.gz: $gzerrno";
 
   my $inheader = 1;
   my @packages;
@@ -584,7 +572,7 @@ sub _readpkgs {
 
   while ( $gzread->gzreadline( $package ) ) {
     if ( $inheader ) {
-      $inheader = 0 unless ( $package =~ /\S/ );
+      $inheader = 0 unless $package =~ /\S/;
       next;
     }
     chomp( $package );
@@ -600,10 +588,10 @@ sub _writepkgs {
   my $self = shift;
   my $pkgs = shift;
 
-  my $gzwrite
-   = gzopen(
-    $self->_cfg( 'local' ) . '/modules/02packages.details.txt.gz',
-    'wb' )
+  my $gzwrite = gzopen(
+    $self->config->get( 'local' )
+     . '/modules/02packages.details.txt.gz', 'wb'
+   )
    or croak
    "Can't open local 02packages.details.txt.gz for writing: $gzerrno";
 
@@ -632,9 +620,10 @@ sub _writepkgs {
 sub _readauthors {
   my $self = shift;
   my $gzread
-   = gzopen( $self->_cfg( 'local' ) . '/authors/01mailrc.txt.gz', 'rb' )
+   = gzopen( $self->config->get( 'local' ) . '/authors/01mailrc.txt.gz',
+    'rb' )
    or croak "Cannot open "
-   . $self->_cfg( 'local' )
+   . $self->config->get( 'local' )
    . "/authors/01mailrc.txt.gz: $gzerrno";
 
   my @authors;
@@ -655,7 +644,8 @@ sub _writeauthors {
   my $authors = shift;
 
   my $gzwrite
-   = gzopen( $self->_cfg( 'local' ) . '/authors/01mailrc.txt.gz', 'wb' )
+   = gzopen( $self->config->get( 'local' ) . '/authors/01mailrc.txt.gz',
+    'wb' )
    or croak
    "Can't open local authors/01mailrc.txt.gz for writing: $gzerrno";
 
@@ -676,7 +666,7 @@ sub _uniq {
 }
 
 sub _fmtdate {
-  my @date = split( /\s+/, scalar( gmtime() ) );
+  my @date = split( /\s+/, scalar( gmtime ) );
   return "$date[0], $date[2] $date[1] $date[4] $date[3] GMT";
 }
 
