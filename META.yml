@@ -1,6 +1,6 @@
 ---
 name: CPAN-Mini-Inject
-version: 0.25
+version: 0.26
 author:
   - 'Andy Armstrong <andy@hexten.net>'
 abstract: Inject modules into a CPAN::Mini mirror.
@@ -18,7 +18,7 @@ requires:
   Env: 0
   File::Basename: 0
   File::Copy: 0
-  File::Path: 0
+  File::Path: 2.07
   File::Spec: 2.07
   File::Spec::Functions: 0
   Getopt::Long: 0
@@ -31,10 +31,10 @@ requires:
 provides:
   CPAN::Mini::Inject:
     file: lib/CPAN/Mini/Inject.pm
-    version: 0.25
+    version: 0.26
   CPAN::Mini::Inject::Config:
     file: lib/CPAN/Mini/Inject/Config.pm
-    version: 0.25
+    version: 0.26
 generated_by: Module::Build version 0.33
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
