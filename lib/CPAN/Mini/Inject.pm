@@ -21,11 +21,11 @@ CPAN::Mini::Inject - Inject modules into a CPAN::Mini mirror.
 
 =head1 VERSION
 
-Version 0.26
+Version 0.27
 
 =cut
 
-our $VERSION = '0.26';
+our $VERSION = '0.27';
 our @ISA     = qw( CPAN::Mini );
 
 =head1 Synopsis
@@ -307,6 +307,10 @@ sub add {
    or croak "Copy failed: $!";
 
   $self->_updperms( $target );
+
+  # remove old version from the list
+  @{ $self->{modulelist} }
+   = grep { $_ !~ m/$options{module}\s+/ } @{ $self->{modulelist} };
 
   push(
     @{ $self->{modulelist} },
@@ -686,6 +690,8 @@ Shawn Sorichetti, C<< <ssoriche@cpan.org> >>
 
 Special thanks to David Bartle, for bringing this module up
 to date, and resolving the reported bugs.
+
+Thanks to Jozef Kutej <jozef@kutej.net> for numerous patches.
 
 =head1 Bugs
 
