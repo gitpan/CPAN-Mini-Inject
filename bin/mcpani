@@ -11,7 +11,7 @@ use Module::Build::ModuleInfo;
 use File::Slurp 'write_file';
 use File::Temp;
 
-our $VERSION = '0.27';
+our $VERSION = '0.28';
 our %options = ();
 
 sub print_version {
@@ -290,11 +290,6 @@ Options:
     -v, --verbose       verbose output
     -V, --version       Version information.
         --signing-key   See CPAN::Checksums $SIGNING_KEY
-
-
-=head1 OVERVIEW
-
-F<mcpani> is a command-line brief description goes here.
 
 =head1 COMMAND LINE OPTIONS
 
