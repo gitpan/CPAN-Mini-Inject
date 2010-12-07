@@ -25,7 +25,7 @@ Version 0.27_02
 
 =cut
 
-our $VERSION = '0.27_02';
+our $VERSION = '0.27_03';
 our @ISA     = qw( CPAN::Mini );
 
 =head1 Synopsis
@@ -315,7 +315,7 @@ sub add {
   push(
     @{ $self->{modulelist} },
     _fmtmodule(
-      $options{module}, $self->{authdir} . "/$modulefile",
+      $options{module}, File::Spec::Unix->catfile( File::Spec->splitdir( $self->{authdir} ), $modulefile ),
       $options{version}
     )
   );
@@ -415,8 +415,10 @@ sub updauthors {
   AUTHOR:
   for my $modline ( @{ $self->{modulelist} } ) {
     my ( $module, $version, $file ) = split( /\s+/, $modline );
-    my $author
-     = ( split( "/", $file, 4 ) )[2]; # extract the author from the path
+
+    # extract the author from the path
+    my @dirs = File::Spec->splitdir( $file );
+    my $author = $dirs[2];
 
     next AUTHOR if defined $author_ids_in_repo{$author};
     next AUTHOR if defined $authors_added{$author};

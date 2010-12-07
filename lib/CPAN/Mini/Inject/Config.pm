@@ -16,7 +16,7 @@ Version 0.27_02
 
 =cut
 
-our $VERSION = '0.27_02';
+our $VERSION = '0.27_03';
 
 =head2 C<new>
 

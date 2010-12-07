@@ -1,22 +1,14 @@
 ---
-abstract: 'Inject modules into a CPAN::Mini mirror.'
+name: CPAN-Mini-Inject
+version: 0.27_03
 author:
   - 'Andy Armstrong <andy@hexten.net>'
-configure_requires:
-  Module::Build: 0.36
-generated_by: 'Module::Build version 0.3603'
+abstract: Inject modules into a CPAN::Mini mirror.
 license: perl
-meta-spec:
-  url: http://module-build.sourceforge.net/META-spec-v1.4.html
-  version: 1.4
-name: CPAN-Mini-Inject
-provides:
-  CPAN::Mini::Inject:
-    file: lib/CPAN/Mini/Inject.pm
-    version: 0.27_02
-  CPAN::Mini::Inject::Config:
-    file: lib/CPAN/Mini/Inject/Config.pm
-    version: 0.27_02
+resources:
+  bugtracker: http://rt.cpan.org/NoAuth/Bugs.html?Dist=CPAN-Mini-Inject
+  license: http://dev.perl.org/licenses/
+  repository: git://github.com/briandfoy/CPAN--Mini--Inject.git (fetch)
 requires:
   Archive::Tar: 0
   CPAN::Checksums: 0
@@ -39,8 +31,16 @@ requires:
   Pod::Usage: 0
   Test::More: 0
   YAML: 0
-resources:
-  bugtracker: http://rt.cpan.org/NoAuth/Bugs.html?Dist=CPAN-Mini-Inject
-  license: http://dev.perl.org/licenses/
-  repository: 'git://github.com/briandfoy/CPAN--Mini--Inject.git (fetch)'
-version: 0.27_02
+configure_requires:
+  Module::Build: 0.340201
+provides:
+  CPAN::Mini::Inject:
+    file: lib/CPAN/Mini/Inject.pm
+    version: 0.27_03
+  CPAN::Mini::Inject::Config:
+    file: lib/CPAN/Mini/Inject/Config.pm
+    version: 0.27_03
+generated_by: Module::Build version 0.340201
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
