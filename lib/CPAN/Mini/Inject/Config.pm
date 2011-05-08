@@ -12,11 +12,11 @@ CPAN::Mini::Inject::Config - Config for CPAN::Mini::Inject
 
 =head1 VERSION
 
-Version 0.27_02
+Version 0.28_01
 
 =cut
 
-our $VERSION = '0.27_03';
+our $VERSION = '0.28_01';
 
 =head2 C<new>
 
@@ -54,7 +54,7 @@ will search the following four places in order:
 
 =item * /etc/mcpani
 
-=back 
+=back
 
 
 loadcfg sets the instance variable cfgfile to the file found or undef if
@@ -116,13 +116,13 @@ Description of options:
 
 =over 4
 
-=item * local 
+=item * local
 
 location to store local CPAN::Mini mirror (*REQUIRED*)
 
-=item * remote 
+=item * remote
 
-CPAN site(s) to mirror from. Multiple sites can be listed space separated. 
+CPAN site(s) to mirror from. Multiple sites can be listed space separated.
 (*REQUIRED*)
 
 =item * repository
@@ -189,5 +189,18 @@ Sets the value for the named configuration directive.
 =cut
 
 sub set { $_[0]->{ $_[1] } = $_[2] }
+
+=head1 CURRENT MAINTAINER
+
+Christian Walde C<< <walde.christian@googlemail.com> >>
+
+=head1 BUGS
+
+Please report any bugs or feature requests to
+C<bug-cpan-mini-inject@rt.cpan.org>, or through the web interface at
+L<http://rt.cpan.org>.  I will be notified, and then you'll automatically
+be notified of progress on your bug as I make changes.
+
+=cut
 
 1;
