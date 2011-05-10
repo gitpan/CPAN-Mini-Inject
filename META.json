@@ -50,11 +50,11 @@
    "provides" : {
       "CPAN::Mini::Inject" : {
          "file" : "lib/CPAN/Mini/Inject.pm",
-         "version" : "0.28_01"
+         "version" : "0.28_02"
       },
       "CPAN::Mini::Inject::Config" : {
          "file" : "lib/CPAN/Mini/Inject/Config.pm",
-         "version" : "0.28_01"
+         "version" : "0.28_02"
       }
    },
    "release_status" : "testing",
@@ -69,5 +69,5 @@
          "url" : "git://github.com/wchristian/CPAN--Mini--Inject.git (fetch)"
       }
    },
-   "version" : "0.28_01"
+   "version" : "0.28_02"
 }
