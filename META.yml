@@ -17,10 +17,10 @@ name: CPAN-Mini-Inject
 provides:
   CPAN::Mini::Inject:
     file: lib/CPAN/Mini/Inject.pm
-    version: 0.28_02
+    version: 0.29
   CPAN::Mini::Inject::Config:
     file: lib/CPAN/Mini/Inject/Config.pm
-    version: 0.28_02
+    version: 0.29
 requires:
   Archive::Tar: 0
   CPAN::Checksums: 0
@@ -47,4 +47,4 @@ resources:
   bugtracker: http://rt.cpan.org/NoAuth/Bugs.html?Dist=CPAN-Mini-Inject
   license: http://dev.perl.org/licenses/
   repository: 'git://github.com/wchristian/CPAN--Mini--Inject.git (fetch)'
-version: 0.28_02
+version: 0.29
