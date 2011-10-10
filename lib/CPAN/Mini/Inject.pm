@@ -14,6 +14,7 @@ use File::Copy;
 use File::Path qw( make_path );
 use File::Spec;
 use LWP::Simple;
+use Dist::Metadata ();
 
 =head1 NAME
 
@@ -21,11 +22,11 @@ CPAN::Mini::Inject - Inject modules into a CPAN::Mini mirror.
 
 =head1 VERSION
 
-Version 0.30
+Version 0.31
 
 =cut
 
-our $VERSION = '0.30';
+our $VERSION = '0.31';
 our @ISA     = qw( CPAN::Mini );
 
 =head1 Synopsis
@@ -101,7 +102,7 @@ sub config_class {
 
 Returns the configuration object. This object should be from
 the class returned by C<config_class> unless you've done something
-wierd.
+weird.
 
 =cut
 
@@ -243,12 +244,21 @@ example CPAN-Mini-Inject-0.01.tar.gz is copied to
 MYCPAN/authors/id/S/SS/SSORICHE. add creates the required directory
 structure below the repository.
 
+Packages found in the distribution will be added to the module list
+(for example both C<CPAN::Mini::Inject> and C<CPAN::Mini::Inject::Config>
+will be added to the F<modules/02packages.details.txt.gz> file).
+
+Packages will be looked for in the C<provides> key of the META file if present,
+otherwise the files in the dist will be searched.
+See L<Dist::Metadata> for more information.
 
 =over 4
 
 =item * module
 
 The name of the module to add.
+The distribution file will be searched for modules
+but you can specify the main one explicitly.
 
 =item * authorid
 
@@ -257,6 +267,8 @@ CPAN author id. This does not have to be a real author id.
 =item * version
 
 The modules version number.
+Module names and versions will be determined,
+but you can specify one explicitly.
 
 =item * file
 
@@ -278,7 +290,7 @@ sub add {
   my %options = @_;
 
   my $optionchk
-   = _optionchk( \%options, qw/module authorid version file/ );
+   = _optionchk( \%options, qw/authorid file/ );
 
   croak "Required option not specified: $optionchk" if $optionchk;
   croak "No repository configured"
@@ -289,6 +301,24 @@ sub add {
 
   croak "Can not read module file: $options{file}"
    unless -r $options{file};
+
+  # attempt to guess module and version
+  my $distmeta = Dist::Metadata->new( file => $options{file} );
+  my $packages = $distmeta->package_versions;
+
+  # include passed in module and version (prefer discovered version)
+  if ( $options{module} ) {
+    $packages->{ $options{module} } ||= $options{version};
+  }
+
+  # if no packages were found we need explicit options
+  if ( !keys %$packages ) {
+    $optionchk
+     = _optionchk( \%options, qw/module version/ );
+
+    croak "Required option not specified and no modules were found: $optionchk"
+     if $optionchk;
+  }
 
   my $modulefile = basename( $options{file} );
   $self->readlist unless exists( $self->{modulelist} );
@@ -308,19 +338,47 @@ sub add {
 
   $self->_updperms( $target );
 
-  # remove old version from the list
-  @{ $self->{modulelist} }
-   = grep { $_ !~ m/\A$options{module}\s+/ } @{ $self->{modulelist} };
+  {
+    my $mods = join('|', keys %$packages);
+    # remove old versions from the list
+    @{ $self->{modulelist} }
+     = grep { $_ !~ m/\A($mods)\s+/ } @{ $self->{modulelist} };
+  }
+
+  # make data available afterwards (since method returns $self)
+  push @{ $self->{added_modules} ||= [] },
+    { file => $modulefile, authorid => $options{authorid}, modules => $packages };
 
   push(
     @{ $self->{modulelist} },
-    _fmtmodule(
-      $options{module}, File::Spec::Unix->catfile( File::Spec->splitdir( $self->{authdir} ), $modulefile ),
-      $options{version}
-    )
+    map {
+      _fmtmodule(
+        $_, File::Spec::Unix->catfile( File::Spec->splitdir( $self->{authdir} ), $modulefile ),
+        defined($packages->{$_}) ? $packages->{$_} : 'undef'
+      )
+    } keys %$packages
   );
 
   return $self;
+}
+
+=head2 C<added_modules>
+
+Returns a list of hash references describing the modules added by this instance.
+Each hashref will contain C<file>, C<authorid>, and C<modules>.
+The C<modules> entry is a hashref of module names and versions included in the C<file>.
+
+The list is cumulative.
+There will be one entry for each time L</add> was called.
+
+This functionality is mostly provided for the included L<mcpani> script
+to be able to verbosely print all the modules added.
+
+=cut
+
+sub added_modules {
+  my $self    = shift;
+  return @{ $self->{added_modules} ||= [] };
 }
 
 =head2 C<inject>

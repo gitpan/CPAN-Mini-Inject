@@ -4,14 +4,12 @@ use strict;
 use Pod::Usage 1.12;
 use Getopt::Long;
 use YAML qw( Load );
-use Archive::Tar;
 use CPAN::Mini::Inject;
 use Env;
-use Module::Build::ModuleInfo;
 use File::Slurp 'write_file';
 use File::Temp;
 
-our $VERSION = '0.30';
+our $VERSION = '0.31';
 our %options = ();
 
 sub print_version {
@@ -34,80 +32,25 @@ sub setsub {
 sub add {
   my $mcpi = shift;
 
-  if ( $options{file} =~ /([^\/]*)-([0-9._]+)\.tar\.gz$/ ) {
-    $options{module}  ||= $1;
-    $options{version} ||= $2;
-
-    $options{module} =~ s/-/::/g;
-  }
-
   $mcpi->readlist;
 
-  my @modules_to_add;
-  if ( $options{'all-in-meta'} ) {
-    ## attempt to read the META.yml
-    my $meta_data = _load_meta( $options{file} );
-
-    my $provides = $meta_data->{provides} || {};
-
-    if ( !$provides ) {
-      warn("Could not find the 'provides' section in META.yml. "
-         . "Only adding based on provided command line.\n" );
-    }
-
-    PROVIDE_ENTRY:
-    while ( my ( $name, $info ) = each( %{$provides} ) ) {
-      next PROVIDE_ENTRY if $name eq $options{module};
-      my $v
-       = defined $info->{version}
-       ? $info->{version}
-       : 'undef';
-
-      push @modules_to_add,
-       {
-        version => $v,
-        module  => $name
-       };
-    }
-
-  }
-  elsif ( $options{'discover-packages'} ) {
-    ## attempt to read the META.yml
-    my $meta_data = _load_meta( $options{file} );
-
-    my $provides = _find_provides( $options{file} );
-
-    while ( my ( $module, $version ) = each( %{$provides} ) ) {
-      push @modules_to_add,
-       {
-        version => $version,
-        module  => $module
-       };
-    }
-  }
-
-  # always add the module/version provided on the command line
-  # as well
-  push @modules_to_add,
-   {
-    version => $options{version},
-    module  => $options{module},
-   };
-
-  $mcpi->readlist;
-  for my $item ( @modules_to_add ) {
     $mcpi->add(
-      module   => $item->{module},
+      module   => $options{module},
       authorid => $options{authorid},
-      version  => $item->{version},
+      version  => $options{version},
       file     => $options{file}
     );
 
-    if ( $options{verbose} ) {
-      print "\nAdding module: $item->{module}\n";
-      print "Author ID: $options{authorid}\n";
-      print "Version: $item->{version}\n";
-      print "File: $options{file}\n";
+  if ( $options{verbose} ) {
+    my @added = $mcpi->added_modules;
+    foreach my $added ( @added ){
+      print "\nAdding File: $added->{file}\n";
+      print "Author ID: $added->{authorid}\n";
+      my $modules = $added->{modules};
+      foreach my $mod ( sort keys %$modules ){
+        print "Module: $mod\n";
+        print "Version: $modules->{$mod}\n";
+      }
       print "To repository: $mcpi->{config}{repository}\n\n";
     }
   }
@@ -142,78 +85,6 @@ sub inject {
   print "Injecting modules from $mcpi->{config}{repository}\n"
    if ( $options{verbose} );
   $mcpi->inject( $options{verbose} );
-}
-
-sub _load_meta {
-  my $filename = shift;
-
-  print "Loading META.yml from $options{file}\n"
-   if ( $options{verbose} );
-  my $tar = Archive::Tar->new();
-  $tar->read( $filename );
-
-  my $meta_filename;
-
-  FILE_LIST:
-  for my $name ( $tar->list_files() ) {
-    if ( $name =~ /META\.yml$/ ) {
-      $meta_filename = $name;
-      last FILE_LIST;
-    }
-  }
-
-  if ( $meta_filename ) {
-    return Load( $tar->get_content( $meta_filename ) );
-  }
-
-  warn( "Could not load the META.yml from file $options{file}" );
-  return {};
-
-}
-
-sub _find_provides {
-  my $filename = shift;
-
-  my %provides;
-
-  print "Parsing *.pm from $options{file}\n"
-   if ( $options{verbose} );
-
-  my $tar = Archive::Tar->new();
-  $tar->read( $filename );
-
-  my $meta_filename;
-
-  # loop through *.pm files in the tarball
-  for my $pm_filename ( $tar->list_files() ) {
-    next if $pm_filename !~ m/\.pm$/;  # only Perl module files are interesting
-    next if $pm_filename =~ m{^t/};    # skip test folder
-
-    # write current .pm file to temp file
-    my $tmp_filename = File::Temp->new( UNLINK => 1 )->filename;
-    write_file($tmp_filename, $tar->get_content( $pm_filename ));
-
-    # get module info
-    my $info = eval { Module::Build::ModuleInfo->new_from_file($tmp_filename) };
-    print 'failed to get module info of "'.$pm_filename.'" - "'.$@.'"'
-      if $@ and $options{verbose};
-    next if not $info;
-
-    foreach my $package (keys %{$info->{'versions'}}) {
-      next if $package eq 'main';
-
-      # set version to undef
-      my $version = (
-        $info->{'versions'}->{$package}
-        ? $info->{'versions'}->{$package}->stringify
-        : 0
-      );
-
-      $provides{$package} = $version;
-    }
-  }
-
-  return \%provides;
 }
 
 # MAIN
@@ -271,8 +142,6 @@ Commands:
           --module      Name of the module to add
           --authorid    Author ID of the module
           --modversion  Version number of the module
-          --all-in-meta parse all modules in the META.yml
-          --discover-packages discover modules in all .pm files
           --file        tar.gz file of the module
 
     --update            Update local CPAN mirror and inject modules
@@ -316,15 +185,10 @@ file name.
 
 =item --all-in-meta
 
-This option will add every module listed in the 'provides' section of
-the META.yml contained in the tar.gz provided by the --file option.
+=item --discover-packages
 
-The options --module and --modversion are still recognized.  If the
-same module/version is found in the META.yml it is not duplicated.
-
-If the META.yml file or the 'provides' section is missing, then
-a warning is issued and the only module added is the one provided by
---module / --modversion.
+L<CPAN::Mini::Inject/add> adds all modules found in the file.
+These options remain for backward compatibility and do nothing.
 
 =item --file
 

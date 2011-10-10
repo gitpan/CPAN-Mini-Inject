@@ -1,5 +1,10 @@
 Revision history for CPAN-Mini-Inject
 
+0.31    2011/10/10
+        Randy Stauner <rwstauner@cpan.org>:
+        - outsource module discovery to Dist::Metadata
+        - moved module discovery from script to CPAN::Mini::Inject
+
 0.30    2011/06/13
         - keep just the last added module, even if there was one in
           02packages.details.txt before we injected
@@ -49,7 +54,7 @@ Revision history for CPAN-Mini-Inject
         - added a command line option '--all-in-meta' which will
           parse the META.yml and index every module listed in the
           'provides' section
-        - module name and version is now parsed correctly from the 
+        - module name and version is now parsed correctly from the
           filename if relative or absolute paths are specified
         - changes for RT bug 37093 by: David Bartle
 
@@ -58,7 +63,7 @@ Revision history for CPAN-Mini-Inject
           http://rt.cpan.org/Ticket/Display.html?id=28363
 
 0.18    2005/04/02
-        - Fixed bug number 11718 involving the Line-Count in 
+        - Fixed bug number 11718 involving the Line-Count in
           02packages.details.txt.gz not being updated.
         - Added tests for update_mirror method.
         - Migrated tests to HTTP::Server::Simple.
@@ -117,7 +122,7 @@ Revision history for CPAN-Mini-Inject
           the uid is 0.
         - inject accepts a true parameter to enable verbose mode which
           lists modules as they are injected.
-        - testremote accepts a true parameter to enable verbose mode 
+        - testremote accepts a true parameter to enable verbose mode
           which display the site being tested, and which is selected.
         - Added --passive switch to mcpani to enable passive ftp
         - Minor updates to perldoc in mcpani
@@ -125,4 +130,3 @@ Revision history for CPAN-Mini-Inject
 
 0.02    2004/10/31
         - First version, released on an unsuspecting world.
-
