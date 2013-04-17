@@ -22,17 +22,17 @@ CPAN::Mini::Inject - Inject modules into a CPAN::Mini mirror.
 
 =head1 VERSION
 
-Version 0.31
+Version 0.32
 
 =cut
 
-our $VERSION = '0.31';
+our $VERSION = '0.32';
 our @ISA     = qw( CPAN::Mini );
 
 =head1 Synopsis
 
 If you're not going to customize the way CPAN::Mini::Inject works you
-probably want to look at the mcpani command instead.
+probably want to look at the L<mcpani> command instead.
 
     use CPAN::Mini::Inject;
 
@@ -402,8 +402,12 @@ sub inject {
   $self->readlist unless ( exists( $self->{modulelist} ) );
 
   my %updatedir;
+  my %already_injected;
   for my $modline ( @{ $self->{modulelist} } ) {
     my ( $module, $version, $file ) = split( /\s+/, $modline );
+
+    next if $already_injected{$file}++;
+
     my $target = $self->config->get( 'local' ) . '/authors/id/' . $file;
     my $source
      = $self->config->get( 'repository' ) . '/authors/id/' . $file;
@@ -416,7 +420,7 @@ sub inject {
      or croak "Copy $source to $tdir failed: $!";
 
     $self->_updperms( $target );
-    print "$target ... injected\n" if $verbose;
+    print "$target ... injected $module\n" if $verbose;
   }
 
   for my $dir ( keys( %updatedir ) ) {
