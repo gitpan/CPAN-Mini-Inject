@@ -12,11 +12,11 @@ CPAN::Mini::Inject::Config - Config for CPAN::Mini::Inject
 
 =head1 VERSION
 
-Version 0.32
+Version 0.33
 
 =cut
 
-our $VERSION = '0.32';
+our $VERSION = '0.33';
 
 =head2 C<new>
 
@@ -159,7 +159,7 @@ sub parse_config {
 
     while ( <$fh> ) {
       next if /^\s*#/;
-      $self->{$1} = $2 if /([^:\s]+)\s*:\s*(.*)$/;
+      $self->{$1} = $2 if /^\s*([^:\s]+)\s*:\s*(.*?)\s*$/;
       delete $required{$1} if defined $required{$1};
     }
 

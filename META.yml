@@ -7,11 +7,12 @@ author:
 - Randy Stauner <rwstauner@cpan.org>
 - Karen Etheridge <ether@cpan.org>
 - Salve J. Nilsen <sjn@cpan.org>
+- Wolfgang Pecho <pecho@belwue.de>
 build_requires: {}
 configure_requires:
   Module::Build: '0.4'
 dynamic_config: 1
-generated_by: Module::Build version 0.4, CPAN::Meta::Converter version 2.120921
+generated_by: Module::Build version 0.4007, CPAN::Meta::Converter version 2.131560
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -20,10 +21,10 @@ name: CPAN-Mini-Inject
 provides:
   CPAN::Mini::Inject:
     file: lib/CPAN/Mini/Inject.pm
-    version: '0.32'
+    version: '0.33'
   CPAN::Mini::Inject::Config:
     file: lib/CPAN/Mini/Inject/Config.pm
-    version: '0.32'
+    version: '0.33'
 requires:
   CPAN::Checksums: '0'
   CPAN::Mini: '0.32'
@@ -48,5 +49,5 @@ requires:
 resources:
   bugtracker: http://rt.cpan.org/NoAuth/Bugs.html?Dist=CPAN-Mini-Inject
   license: http://dev.perl.org/licenses/
-  repository: git://github.com/AndyA/CPAN--Mini--Inject.git (fetch)
-version: '0.32'
+  repository: git://github.com/AndyA/CPAN--Mini--Inject.git
+version: '0.33'

@@ -6,10 +6,11 @@
       "Christian Walde <walde.christian@googlemail.com>",
       "Randy Stauner <rwstauner@cpan.org>",
       "Karen Etheridge <ether@cpan.org>",
-      "Salve J. Nilsen <sjn@cpan.org>"
+      "Salve J. Nilsen <sjn@cpan.org>",
+      "Wolfgang Pecho <pecho@belwue.de>"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "Module::Build version 0.4, CPAN::Meta::Converter version 2.120921",
+   "generated_by" : "Module::Build version 0.4007, CPAN::Meta::Converter version 2.131560",
    "license" : [
       "perl_5"
    ],
@@ -52,11 +53,11 @@
    "provides" : {
       "CPAN::Mini::Inject" : {
          "file" : "lib/CPAN/Mini/Inject.pm",
-         "version" : "0.32"
+         "version" : "0.33"
       },
       "CPAN::Mini::Inject::Config" : {
          "file" : "lib/CPAN/Mini/Inject/Config.pm",
-         "version" : "0.32"
+         "version" : "0.33"
       }
    },
    "release_status" : "stable",
@@ -68,8 +69,8 @@
          "http://dev.perl.org/licenses/"
       ],
       "repository" : {
-         "url" : "git://github.com/AndyA/CPAN--Mini--Inject.git (fetch)"
+         "url" : "git://github.com/AndyA/CPAN--Mini--Inject.git"
       }
    },
-   "version" : "0.32"
+   "version" : "0.33"
 }
